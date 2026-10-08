@@ -88,3 +88,7 @@ Checks:
 - **Review before pushing.** Run `git diff --cached` before every push; `.gitignore` is a safety
   net only.
 - **Local only:** the default setup is for one PC. Don't expose it to the internet as-is.
+
+## Standalone LAN client tooling
+
+See [OfflineDaoc.LanClient](../source/tools/OfflineDaoc.LanClient/README.md) for the independent Windows client launcher, client-only installer, original-download packaging workflow and tests. It requires no server or database on client PCs. Build outputs and game payloads are not committed; the tooling can also be copied outside the repository for reuse across releases.
