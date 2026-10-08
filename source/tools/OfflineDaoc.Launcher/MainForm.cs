@@ -385,7 +385,7 @@ internal sealed partial class MainForm : Form
         cards.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         cards.Controls.Add(Card("SERVER", _serverState, DaocTheme.Iron), 0, 0);
         _serverState.Font = new Font("Georgia", 12f, FontStyle.Bold);
-        cards.Controls.Add(Card("ONLINE BOTS", _onlineValue, DaocTheme.Gold), 1, 0);
+        cards.Controls.Add(Card("ONLINE", _onlineValue, DaocTheme.Gold), 1, 0);
         cards.Controls.Add(Card("ALBION", _albionValue, DaocTheme.Albion, RealmGenerateButton(1, "ALBION", DaocTheme.Albion)), 2, 0);
         cards.Controls.Add(Card("MIDGARD", _midgardValue, DaocTheme.Midgard, RealmGenerateButton(2, "MIDGARD", DaocTheme.Midgard)), 3, 0);
         cards.Controls.Add(Card("HIBERNIA", _hiberniaValue, DaocTheme.Hibernia, RealmGenerateButton(3, "HIBERNIA", DaocTheme.Hibernia)), 4, 0);
@@ -995,7 +995,7 @@ internal sealed partial class MainForm : Form
         _deleteBotButton.Click += async (_, _) => await DeleteSelectedBotAsync();
         panel.Controls.Add(_deleteBotButton);
         panel.Controls.Add(_onlineOnly);
-        _helpTip.SetToolTip(_onlineOnly, "Show only online bots in the current realm and search results. Uncheck to show all bots.");
+        _helpTip.SetToolTip(_onlineOnly, "Show online players and bots. Uncheck to also show offline bots.");
         return panel;
     }
 
@@ -1167,6 +1167,7 @@ internal sealed partial class MainForm : Form
         _grid.ColumnHeadersHeight = 28;
         _grid.RowTemplate.Height = 25;
         _grid.DataSource = _botSource;
+        _grid.Columns.Add(TextColumn("Type", "PopulationType", 115));
         _grid.Columns.Add(TextColumn("Name", "Name", 120));
         _grid.Columns.Add(TextColumn("Realm", "Realm", 70));
         _grid.Columns.Add(TextColumn("Race", "RaceName", 85));
@@ -1249,7 +1250,7 @@ internal sealed partial class MainForm : Form
         {
             _refreshButton.Text = "READING…";
         }
-        _footer.Text = "Reading current playerbot status…";
+        _footer.Text = "Reading current population status…";
         try
         {
             var snapshot = await Task.Run(ReadSnapshot);
@@ -1279,7 +1280,7 @@ internal sealed partial class MainForm : Form
                 : snapshot.ServerState.Equals("Running", StringComparison.OrdinalIgnoreCase)
                     ? DaocTheme.Success
                     : DaocTheme.Muted;
-            _onlineValue.Text = snapshot.Bots.Count(bot => bot.IsOnline).ToString("N0");
+            _onlineValue.Text = snapshot.Bots.Count(bot => bot.IsOnline).ToString("N0") + (snapshot.PlayersAvailable ? "" : " + ?");
             _albionValue.Text = RealmRosterValue(snapshot.Bots, "Albion");
             _midgardValue.Text = RealmRosterValue(snapshot.Bots, "Midgard");
             _hiberniaValue.Text = RealmRosterValue(snapshot.Bots, "Hibernia");
@@ -1296,7 +1297,7 @@ internal sealed partial class MainForm : Form
             UpdateDeleteButton();
             RenderActiveGroups();
             RenderActiveRvr();
-            _dashboardFooterSummary = $"Realm Exchange {_auctions.Count:N0} listings • Memory {snapshot.ServerMemoryMb:0} MB • Bot status updated {DateTime.Now:T}";
+            _dashboardFooterSummary = $"Realm Exchange {_auctions.Count:N0} listings • Memory {snapshot.ServerMemoryMb:0} MB • {(snapshot.PlayersAvailable ? snapshot.Bots.Count(bot => bot.IsPlayer).ToString("N0") + " players" : "Players unavailable")} · {snapshot.Bots.Count(bot => !bot.IsPlayer && bot.IsOnline):N0} bots online • Updated {DateTime.Now:T}";
             _footer.Text = _dashboardFooterSummary;
             UpdateAutoRefreshCountdown();
         }
@@ -1829,6 +1830,9 @@ internal sealed partial class MainForm : Form
             }
         }
 
+        List<BotRow>? players = running ? ReadPlayerRows(liveSnapshot, DateTime.UtcNow) : [];
+        if (players is not null)
+            bots.AddRange(players);
         active = bots.Count(bot => bot.IsOnline);
         List<GroupRow> groups = bots
             .Where(bot => bot.IsOnline && !bot.DeletionQueued && bot.GroupId.Length > 0)
@@ -1863,7 +1867,7 @@ internal sealed partial class MainForm : Form
         bool rvrAnnouncements = ReadSwitch(connection, "rvr_battleground_announcements");
         bool pveAnnouncements = ReadSwitch(connection, "pve_realm_event_announcements");
         return new DashboardSnapshot(serverState, bots, groups, active, memoryMb, botAiDelay, playerXpRate, botXpRate, makeMeGm, ReadRvrWorld(),
-            rvrAnnouncements, pveAnnouncements);
+            rvrAnnouncements, pveAnnouncements) { PlayersAvailable = players is not null };
     }
 
     // Anything but an explicit "false" (including a missing row) reads as on.
@@ -2114,7 +2118,7 @@ internal sealed partial class MainForm : Form
                 : SortOrder.None;
         }
 
-        bool allowSluaghbinder = SluaghbinderEnabled(connection, transaction);
+
     }
 
     // "VERSION 0.34b" with the custom Sluaghbinder class (the default), "VERSION 0.34" in the
@@ -2166,6 +2170,7 @@ internal sealed partial class MainForm : Form
         }
 
         using var transaction = connection.BeginTransaction();
+        bool allowSluaghbinder = SluaghbinderEnabled(connection, transaction);
         var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using (var names = connection.CreateCommand())
         {
@@ -3018,9 +3023,9 @@ internal sealed partial class MainForm : Form
 
     private static string RealmRosterValue(IReadOnlyCollection<BotRow> bots, string realm)
     {
-        int total = bots.Count(bot => bot.Realm == realm && !bot.DeletionQueued);
+        int total = bots.Count(bot => !bot.IsPlayer && bot.Realm == realm && !bot.DeletionQueued);
         int online = bots.Count(bot => bot.Realm == realm && bot.IsOnline && !bot.DeletionQueued);
-        return $"{total:N0} ROSTER\n{online:N0} ONLINE";
+        return $"{total:N0} BOTS\n{online:N0} ONLINE TOTAL";
     }
 
     private static string FormatExpiry(string value)
@@ -3155,6 +3160,8 @@ internal sealed partial class MainForm : Form
     private sealed record BotRow(long? BotId, string Name, string Realm, string RaceName, string Gender, string ClassName, int Level, string ZoneName, string Activity, bool IsOnline, bool CanDelete, bool DeletionQueued,
         string GroupId, string GroupPhase, string GroupGoal, string GroupStatus, string ObjectiveKind, string ObjectiveAssignmentId, string ObjectiveAssignedUtc, string ObjectivePhase)
     {
+        public bool IsPlayer { get; init; }
+        public string PopulationType => IsPlayer ? "Player" : BotId.HasValue ? "Autonomous Bot" : "Companion";
         public string ObjectiveExpiresUtc { get; init; } = string.Empty;
         public bool HasGroupTaskClock { get; init; }
         public bool TaskTimerPaused { get; init; }
@@ -3215,13 +3222,26 @@ internal sealed partial class MainForm : Form
     }
     private sealed record DashboardSnapshot(string ServerState, List<BotRow> Bots, List<GroupRow> Groups,
         int Active, double ServerMemoryMb, BotAiDelayReport? BotAiDelay, double PlayerXpRate, double BotXpRate, bool MakeMeGm = false, RvrWorldSnapshot? RvrWorld = null,
-        bool RvrAnnouncements = true, bool PveAnnouncements = true);
+        bool RvrAnnouncements = true, bool PveAnnouncements = true) { public bool PlayersAvailable { get; init; } }
 
     private sealed record LiveBotStatus(long BotId, int Level, string ZoneName, string Activity,
         string CurrentGoal, string TargetName, string TravelDestination, string ObjectiveProgress,
         bool IsAlive, string ItineraryJson, string ObjectiveKind, string ObjectiveAssignmentId,
         string ObjectiveAssignedUtc, string ObjectivePhase, string ObjectiveExpiresUtc);
-    private sealed record LiveBotSnapshot(DateTime UpdatedUtc, bool Running, string RequestId, List<LiveBotStatus> Bots);
+    private sealed record LivePlayerStatus(string Name, int Realm, string RaceName, int Gender,
+        string ClassName, int Level, string ZoneName);
+    private sealed record LiveBotSnapshot(DateTime UpdatedUtc, bool Running, string RequestId,
+        List<LiveBotStatus> Bots, List<LivePlayerStatus>? Players = null);
+
+    private static List<BotRow>? ReadPlayerRows(LiveBotSnapshot? snapshot, DateTime nowUtc)
+    {
+        if (!IsLiveBotSnapshotFresh(snapshot, nowUtc) || snapshot!.Players is null)
+            return null;
+        return snapshot.Players.Select(player => new BotRow(null, player.Name, RealmName(player.Realm),
+            player.RaceName, GenderName(player.Gender), player.ClassName, player.Level, player.ZoneName,
+            "Player", true, false, false, string.Empty, string.Empty, string.Empty, string.Empty,
+            string.Empty, string.Empty, string.Empty, string.Empty) { IsPlayer = true }).ToList();
+    }
 
     private sealed record RvrObjective(string Kind, string Name, string Owner, string State, string Location, string Carrier, string Forces, string Id = "", long CooldownMilliseconds = 0, bool IsCatalogOnly = false, long PhaseRemainingMilliseconds = 0, string Phase = "")
     {

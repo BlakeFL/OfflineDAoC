@@ -22,7 +22,11 @@ public static class AutonomousBotDashboard
         string CurrentGoal, string TargetName, string TravelDestination, string ObjectiveProgress,
         bool IsAlive, string ItineraryJson, string ObjectiveKind, string ObjectiveAssignmentId,
         string ObjectiveAssignedUtc, string ObjectivePhase, string ObjectiveExpiresUtc);
-    public sealed record Snapshot(DateTime UpdatedUtc, bool Running, string RequestId, BotStatus[] Bots);
+    public sealed record PlayerStatus(string Name, int Realm, string RaceName, int Gender,
+        string ClassName, int Level, string ZoneName);
+    // Optional for compatibility with snapshots written before player visibility was added.
+    public sealed record Snapshot(DateTime UpdatedUtc, bool Running, string RequestId, BotStatus[] Bots,
+        PlayerStatus[] Players = null);
 
     private static readonly Logger Log = LoggerManager.Create(typeof(AutonomousBotDashboard));
     private static Timer _timer;
@@ -110,7 +114,16 @@ public static class AutonomousBotDashboard
                     .Select(Capture)
                     .ToArray()
                 : [];
-            var snapshot = new Snapshot(DateTime.UtcNow, running, requestId, bots);
+            // ClientService enumerates real playing clients, not GameBots or companion NPCs.
+            PlayerStatus[] players = running
+                ? ClientService.Instance.GetPlayers()
+                    .Where(player => player.Client?.IsPlaying == true && !player.IsLinkDeathTimerRunning)
+                    .Select(player => new PlayerStatus(player.Name, (int)player.Realm, player.RaceName,
+                        (int)player.Gender, player.CharacterClass?.Name ?? "—", player.Level,
+                        player.CurrentZone?.Description ?? "—"))
+                    .ToArray()
+                : [];
+            var snapshot = new Snapshot(DateTime.UtcNow, running, requestId, bots, players);
             string temporaryPath = FilePath + ".tmp";
             using (var stream = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write,
                        FileShare.Read, 64 * 1024, FileOptions.SequentialScan))
