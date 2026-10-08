@@ -19,7 +19,7 @@ if ($UsePackageManifest) {
     }
 } else {
 if (!$BuildReport) { $BuildReport = "$CleanRelease-build-report.json" }
-# Consume only the clean release produced by the upstream build_release_034.py pipeline.
+# Consume only the clean release produced by the upstream release build pipeline.
 $report = Get-Content -LiteralPath $BuildReport -Raw | ConvertFrom-Json
 if (!$report.copied_hashes -or !$report.world) { throw 'Missing upstream clean-release build report.' }
 }

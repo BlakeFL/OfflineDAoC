@@ -51,7 +51,7 @@ For an original release download, use the complete joined ZIP and its accompanyi
 `download-manifest.json`. No internal build report is needed:
 
 ```powershell
-.\package-download.ps1 -DownloadDirectory 'C:\Games\OfflineDAoC\.downloads\v0.34b' -Output 'C:\Games\OfflineDAoC\playable-v0.34b\LAN-Client-0.34b'
+.\package-download.ps1 -DownloadDirectory 'C:\Games\OfflineDAoC\.downloads\v0.35b' -Output 'C:\Games\OfflineDAoC\playable-v0.35b\LAN-Client-0.35b'
 ```
 
 The output directory must not already exist. This verifies the ZIP's size and SHA-256,
@@ -66,13 +66,13 @@ Run in PowerShell from this directory:
 .\build.ps1
 .\test.ps1
 .\test-package.ps1
-.\package.ps1 -CleanRelease 'D:\releases\clean-034b' -ReleaseLabel '0.34b' -Output 'D:\releases\lan-034b'
+.\package.ps1 -CleanRelease 'D:\releases\clean-035b' -ReleaseLabel '0.35b' -Output 'D:\releases\lan-035b'
 ```
 
 Build uses the Windows Framework compiler and emits standalone `artifacts/OfflineDAoC-LAN.exe`
 and `artifacts/Setup-LAN.exe`. Setup alone has no game files: it needs the generated payload beside it.
-For the build-report workflow, package input must come from upstream `build_release_034.py`, followed by assembly of the release
-notices. Its sibling `clean-034b-build-report.json` is required (or supply `-BuildReport`).
+For the build-report workflow, package input must come from upstream `build_release_035.py`, followed by assembly of the release
+notices. Its sibling `clean-035b-build-report.json` is required (or supply `-BuildReport`).
 Every copied client asset must match the clean build report. `paths.dat` is replaced with a clean
 LAN preference profile. The package contains no server, database, host credentials or bot state.
 Keep Setup and payload together when transferring or archiving; this is a folder-based installer,

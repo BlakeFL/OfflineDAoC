@@ -21,8 +21,9 @@ claiming that no humans are online. An authoritative empty snapshot clears previ
 The feature is confined to AutonomousBotDashboard.cs, MainForm.cs, and two test files:
 UT_PlayerPopulationSnapshot.cs and PlayerPopulationTests.cs. Keep the new Players JSON field
 optional to support older snapshots. Preserve the existing DashboardSnapshot constructor shape.
-The newer cloned source also needed a pre-existing compile fix: the allowSluaghbinder declaration
-belongs inside GenerateBotCharacters, after opening its transaction, not UpdateAuctionSortGlyph.
+Upstream 0.35 includes the Sluaghbinder compile fix that was also part of the original backport.
+Keep its single allowSluaghbinder declaration inside GenerateBotCharacters; do not duplicate it
+when merging the population feature.
 
 Build against each target release's source rather than deploying a newer upstream server into an
 older played installation. Stop the launcher/server before deployment, back up replaced files,

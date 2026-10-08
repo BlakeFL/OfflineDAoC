@@ -9,7 +9,7 @@ namespace OfflineDaoc.Launcher;
 
 internal sealed partial class MainForm : Form
 {
-    internal const string DisplayVersion = "0.34";
+    internal const string DisplayVersion = "0.35";
     internal const int AutoRefreshMilliseconds = 5 * 60 * 1000;
     internal const int RvrSnapshotRefreshMilliseconds = 30 * 1000;
     internal const int LiveBotSnapshotMaxAgeMilliseconds = 20_000;
@@ -2117,11 +2117,9 @@ internal sealed partial class MainForm : Form
                 ? _auctionSortAscending ? SortOrder.Ascending : SortOrder.Descending
                 : SortOrder.None;
         }
-
-
     }
 
-    // "VERSION 0.34b" with the custom Sluaghbinder class (the default), "VERSION 0.34" in the
+    // "VERSION 0.35b" with the custom Sluaghbinder class (the default), "VERSION 0.35" in the
     // edition without it, so the label always names the edition that is installed.
     internal static string VersionLabel(bool customClass) =>
         customClass ? $"VERSION {DisplayVersion}b" : $"VERSION {DisplayVersion}";
@@ -2170,7 +2168,6 @@ internal sealed partial class MainForm : Form
         }
 
         using var transaction = connection.BeginTransaction();
-        bool allowSluaghbinder = SluaghbinderEnabled(connection, transaction);
         var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using (var names = connection.CreateCommand())
         {
@@ -2180,6 +2177,7 @@ internal sealed partial class MainForm : Form
             while (reader.Read()) reserved.Add(reader.GetString(0));
         }
 
+        bool allowSluaghbinder = SluaghbinderEnabled(connection, transaction);
         var identities = new List<BotCharacterGenerator.Identity>(count);
         for (int index = 0; index < count; index++)
         {
@@ -2863,7 +2861,7 @@ internal sealed partial class MainForm : Form
     private void EnsureBorderlessFullscreen()
     {
         // Use this installation's own client profile (paths.dat settings=), never another copy's preferences.
-        string profile = "OfflineDAoC034";
+        string profile = "OfflineDAoC035";
         string pathsFile = Path.Combine(_clientDirectory, "paths.dat");
         if (File.Exists(pathsFile))
         {
